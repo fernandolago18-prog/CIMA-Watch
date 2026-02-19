@@ -563,3 +563,146 @@ body {
     background: linear-gradient(to bottom right, #1e293b, rgba(239, 68, 68, 0.1));
   }
 }
+
+/* --- Progress Bar --- */
+.progress-bar-container {
+  width: 100%;
+  max-width: 300px;
+  height: 8px;
+  background-color: var(--color-card-border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 1rem auto;
+  position: relative;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background-color: var(--color-primary);
+  transition: width 0.3s ease;
+}
+
+.progress-text {
+  display: block;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  margin-top: 0.5rem;
+}
+
+/* --- Managed State (Gestionado) --- */
+.shortage-card.managed-item {
+  opacity: 0.6;
+  background-color: #f8fafc;
+  border-left-color: var(--color-card-border);
+  box-shadow: none;
+}
+
+.shortage-card.managed-item:hover {
+  opacity: 1;
+  transform: none;
+}
+
+.status-managed-toggle {
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--color-card-border);
+  color: var(--color-text-muted);
+  transition: all 0.2s;
+  padding: 0.25rem 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-family: inherit;
+}
+
+.status-managed-toggle:hover {
+  background: #f1f5f9;
+  border-color: var(--color-secondary);
+}
+
+.status-managed-toggle.active {
+  background: #ecfdf5;
+  color: var(--color-success);
+  border-color: #d1fae5;
+}
+
+.circle-outline {
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* Dark mode overrides for managed */
+@media (prefers-color-scheme: dark) {
+  .shortage-card.managed-item {
+    background-color: rgba(255, 255, 255, 0.02);
+    border-left-color: #334155;
+  }
+
+  .status-managed-toggle {
+    border-color: #334155;
+  }
+
+  .status-managed-toggle:hover {
+    background: #334155;
+    color: #f8fafc;
+  }
+
+  .status-managed-toggle.active {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: rgba(16, 185, 129, 0.3);
+  }
+}
+
+/* --- Note Section --- */
+.note-section {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--color-card-border);
+}
+
+.note-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  margin-bottom: 0.5rem;
+}
+
+.note-input {
+  width: 100%;
+  min-height: 2.5rem;
+  padding: 0.5rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  border: 1px solid var(--color-card-border);
+  border-radius: 6px;
+  background-color: #f8fafc;
+  color: var(--color-text);
+  resize: vertical;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+
+.note-input:focus {
+  outline: none;
+  background-color: var(--color-card-bg);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+  .note-input {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-color: #334155;
+    color: #e2e8f0;
+  }
+
+  .note-input:focus {
+    background-color: #1e293b;
+    border-color: var(--color-primary);
+  }
+}

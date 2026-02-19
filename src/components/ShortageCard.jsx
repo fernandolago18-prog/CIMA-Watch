@@ -4,7 +4,7 @@ import { AlertTriangle, Calendar, Info, CheckCircle, XCircle } from 'lucide-reac
 import { isCriticalShortage } from '../utils/shortageUtils';
 import { formatDate } from '../utils/dateUtils';
 
-const ShortageCard = React.memo(({ shortage, style }) => {
+const ShortageCard = React.memo(({ shortage, style, isManaged, onToggleManaged, note, onUpdateNote }) => {
     const [expanded, setExpanded] = useState(false);
 
     const isActive = shortage.activo;
@@ -15,21 +15,32 @@ const ShortageCard = React.memo(({ shortage, style }) => {
         ? `${shortage.observ.substring(0, 200)}...`
         : shortage.observ;
 
-    // Merge passed style (from virtualization) with defaults if needed
-    // However, for grid virtualization, the wrapper div usually handles positioning.
-    // If we pass style directly to the root div, it works best.
+    // Use nregistro or cn for identification
+    const id = shortage.cn || shortage.nregistro;
 
     return (
         <div
-            className={`shortage-card glass-panel ${isCritical ? 'critical-border' : ''} ${shortage.inCatalog ? 'catalog-match' : ''}`}
+            className={`shortage-card glass-panel ${isCritical ? 'critical-border' : ''} ${shortage.inCatalog ? 'catalog-match' : ''} ${isManaged ? 'managed-item' : ''}`}
             style={style}
         >
             <div className="card-header">
                 <span className="cn-badge">Código Nacional: {shortage.cn}</span>
                 <div className="status-badges">
+                    {/* Managed Toggle Button */}
+                    <button
+                        onClick={() => onToggleManaged && onToggleManaged(id)}
+                        className={`status-pill status-managed-toggle ${isManaged ? 'active' : ''}`}
+                        title={isManaged ? "Marcar como pendiente" : "Marcar como gestionado"}
+                    >
+                        <span className="icon-wrapper-stable">
+                            {isManaged ? <CheckCircle size={14} /> : <div className="circle-outline"></div>}
+                        </span>
+                        <span>{isManaged ? 'Gestionado' : 'Pendiente'}</span>
+                    </button>
+
                     {shortage.inCatalog && (
                         <span className="status-pill status-catalog" style={{ background: 'var(--color-primary-light)', color: 'var(--color-primary)', border: '1px solid var(--color-primary)' }}>
-                            En mi Hospital
+                            Hospital
                         </span>
                     )}
                     {!isActive && (
@@ -80,6 +91,18 @@ const ShortageCard = React.memo(({ shortage, style }) => {
                         )}
                     </div>
                 )}
+
+                {/* Notes Section */}
+                <div className="note-section">
+                    <label className="note-label">Mis Notas:</label>
+                    <textarea
+                        className="note-input"
+                        placeholder="Escribe aquí para gestionar (ej: Pedido equivalente...)"
+                        defaultValue={note || ''}
+                        onBlur={(e) => onUpdateNote && onUpdateNote(id, e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                </div>
             </div>
         </div>
     );

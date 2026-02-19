@@ -30,7 +30,7 @@ function App() {
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(''); // New debounced state
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [showCriticalOnly, setShowCriticalOnly] = useState(false);
   const [showCatalogOnly, setShowCatalogOnly] = useState(false);
 
@@ -38,7 +38,7 @@ function App() {
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
-    }, 200); // 200ms delay
+    }, 200);
 
     return () => {
       clearTimeout(handler);
@@ -48,9 +48,7 @@ function App() {
   // Auto-enable filter if catalog was loaded from storage
   useEffect(() => {
     if (catalogCNs.size > 0) {
-      // Optional: decide if we want to auto-enable filter on load.
-      // For now, let's keep it off by default or remember it too. 
-      // User didn't ask to remember filter state, just the file.
+      // Keep filter off by default on load
     }
   }, []);
 
@@ -59,12 +57,18 @@ function App() {
      Pagination is handled internally by the service now. 
      This ensures Search and Catalog Matching work on the full dataset.
   */
+  const [loadProgress, setLoadProgress] = useState({ current: 0, total: 0 });
+
   const loadData = useCallback(async () => {
-    // Forced update to ensure latest logic is loaded
     setLoading(true);
     setError(null);
+    setLoadProgress({ current: 0, total: 0 });
+
     try {
-      const data = await getAllShortages();
+      const data = await getAllShortages((current, total) => {
+        setLoadProgress({ current, total });
+      });
+
       if (data && data.resultados) {
         setShortages(data.resultados);
       }
@@ -72,6 +76,7 @@ function App() {
       setError('Error al cargar los datos de desabastecimiento. Por favor, inténtelo de nuevo más tarde.');
     } finally {
       setLoading(false);
+      setLoadProgress({ current: 0, total: 0 });
     }
   }, []);
 
@@ -81,11 +86,10 @@ function App() {
 
   const handleCatalogLoaded = (cnSet) => {
     setCatalogCNs(cnSet);
-    // Persist to localStorage
     localStorage.setItem('catalogCNs', JSON.stringify([...cnSet]));
 
     if (cnSet.size > 0) {
-      setShowCatalogOnly(true); // Auto-switch to filter view if file loaded
+      setShowCatalogOnly(true);
     } else {
       setShowCatalogOnly(false);
     }
@@ -97,29 +101,107 @@ function App() {
     setShowCatalogOnly(false);
   };
 
+  // Managed State (Gestionados) - Initialize from localStorage
+  const [managedCNs, setManagedCNs] = useState(() => {
+    const saved = localStorage.getItem('managedCNs');
+    if (saved) {
+      try {
+        return new Set(JSON.parse(saved));
+      } catch (e) {
+        console.error("Error parsing saved managed items", e);
+        return new Set();
+      }
+    }
+    return new Set();
+  });
+
+  const toggleManaged = useCallback((cn) => {
+    setManagedCNs(prev => {
+      const next = new Set(prev);
+      if (next.has(cn)) {
+        next.delete(cn);
+      } else {
+        next.add(cn);
+      }
+      localStorage.setItem('managedCNs', JSON.stringify([...next]));
+      return next;
+    });
+  }, []);
+
+  // Notes State (Notas) - Initialize from localStorage
+  const [notes, setNotes] = useState(() => {
+    const saved = localStorage.getItem('shortageNotes');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error("Error parsing saved notes", e);
+        return {};
+      }
+    }
+    return {};
+  });
+
+  const updateNote = useCallback((cn, text) => {
+    setNotes(prev => {
+      const next = { ...prev };
+      if (!text || text.trim() === '') {
+        delete next[cn];
+      } else {
+        next[cn] = text;
+      }
+      localStorage.setItem('shortageNotes', JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  // Smart Cleanup Handler (Only removes data for resolved/missing items)
+  const handleCleanupData = () => {
+    if (window.confirm("¿Limpiar datos de medicamentos RESUELTOS?\n\nEsta acción borrará las notas y marcas de 'Gestionado' SOLO de los medicamentos que ya no están en la lista de desabastecimiento.\n\nLos datos de desabastecimientos activos SE MANTENDRÁN.")) {
+      const activeCNs = new Set(shortages.map(s => String(s.cn || s.nregistro)));
+
+      const newManaged = new Set([...managedCNs].filter(cn => activeCNs.has(String(cn))));
+
+      const newNotes = Object.keys(notes).reduce((acc, cn) => {
+        if (activeCNs.has(String(cn))) {
+          acc[cn] = notes[cn];
+        }
+        return acc;
+      }, {});
+
+      setManagedCNs(newManaged);
+      setNotes(newNotes);
+
+      localStorage.setItem('managedCNs', JSON.stringify([...newManaged]));
+      localStorage.setItem('shortageNotes', JSON.stringify(newNotes));
+
+      const removedCount = (managedCNs.size - newManaged.size) + (Object.keys(notes).length - Object.keys(newNotes).length);
+      if (removedCount > 0) {
+        alert(`Se han limpiado ${removedCount} registros antiguos.`);
+      } else {
+        alert("No había datos antiguos para limpiar.");
+      }
+    }
+  };
+
   // Derived state for filtered list
   const filteredShortages = useMemo(() => {
     const now = Date.now();
     const oneYearMs = 365 * 24 * 60 * 60 * 1000;
 
     return shortages.map(item => {
-      // Enrich item with 'inCatalog' flag
-      // Normalize API CN to digits only to match CatalogUpload logic
-      // Prioritize item.cn as it's the standard field, fallback to nregistro
       const rawCN = item.cn || item.nregistro;
       const apiCN = rawCN ? String(rawCN).replace(/\D/g, '') : '';
 
       return {
         ...item,
-        normalizedCN: apiCN, // Store for search
+        normalizedCN: apiCN,
         inCatalog: catalogCNs.has(apiCN)
       };
     }).filter(item => {
-      // Logic 1: Remove Stale Data
       const startMs = Number(item.fini);
       let hasIndefiniteEnd = false;
 
-      // Determine if end date is basically "unknown"
       if (!item.ffin) {
         hasIndefiniteEnd = true;
       } else {
@@ -131,14 +213,12 @@ function App() {
         return false;
       }
 
-      // Search logic using DEBOUNCED query
       const trimmedQuery = debouncedSearchQuery.trim();
       const lowerQuery = trimmedQuery.toLowerCase();
       const normalizedQuery = trimmedQuery.replace(/\D/g, '');
 
       const nameMatch = item.nombre && item.nombre.toLowerCase().includes(lowerQuery);
 
-      // Fix: Use startsWith for CN search as requested by user
       const cnMatch = (item.nregistro && String(item.nregistro).startsWith(trimmedQuery)) ||
         (item.cn && String(item.cn).startsWith(trimmedQuery));
 
@@ -146,12 +226,10 @@ function App() {
 
       if (!nameMatch && !cnMatch && !normalizedCnMatch) return false;
 
-      // Filter: Catalog Only
       if (showCatalogOnly && !item.inCatalog) {
         return false;
       }
 
-      // Filter: Critical Only
       if (showCriticalOnly) {
         return isCriticalShortage(item);
       }
@@ -159,8 +237,6 @@ function App() {
       return true;
     });
   }, [shortages, debouncedSearchQuery, showCriticalOnly, catalogCNs, showCatalogOnly]);
-
-
 
   return (
     <ErrorBoundary>
@@ -177,8 +253,6 @@ function App() {
               showCriticalOnly={showCriticalOnly}
               setShowCriticalOnly={setShowCriticalOnly}
             />
-
-
 
             {catalogCNs.size > 0 && (
               <div className="glass-panel" style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -208,6 +282,30 @@ function App() {
                 </button>
               </div>
             )}
+
+            {/* Smart Cleanup Button (visible only if data exists) */}
+            {(managedCNs.size > 0 || Object.keys(notes).length > 0) && (
+              <div className="glass-panel" style={{ padding: '0.5rem 1rem' }}>
+                <button
+                  onClick={handleCleanupData}
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid #64748b',
+                    color: '#64748b',
+                    borderRadius: '4px',
+                    padding: '2px 8px',
+                    fontSize: '0.75rem',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem'
+                  }}
+                  title="Borrar solo datos de problemas ya resueltos"
+                >
+                  Limpiar Resueltos
+                </button>
+              </div>
+            )}
           </div>
 
           {error && (
@@ -219,6 +317,11 @@ function App() {
           <ShortageList
             shortages={filteredShortages}
             loading={loading}
+            progress={loadProgress}
+            managedCNs={managedCNs}
+            onToggleManaged={toggleManaged}
+            notes={notes}
+            onUpdateNote={updateNote}
           />
         </main>
       </div>

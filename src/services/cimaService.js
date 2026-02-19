@@ -3,59 +3,72 @@
 const API_BASE_URL = '/api/psuministro';
 
 /**
- * Fetches the list of medicine shortages from the CIMA API.
- * @param {number} page - The page number to fetch.
- * @param {number} pageSize - Number of items per page (set to 5000 to ensure full client-side matching).
+ * Fetches the list of medicine shortages from the CIMA API using parallel requests.
+ * @param {function} onProgress - Callback function(currentLoadedPages, totalPages)
  * @returns {Promise<Object>} - The JSON response from the API.
  */
-/**
- * Fetches ALL medicine shortages from the CIMA API by iterating through pages.
- * The API seems to cap at 200 items per page regardless of pageSize param in some cases,
- * or simply paginates. This function ensures we get everything.
- * @returns {Promise<Object>} - The combined JSON response with all results.
- */
-export const getAllShortages = async () => {
+export const getAllShortages = async (onProgress) => {
   let allResults = [];
-  let page = 1;
-  let hasMore = true;
-  const pageSize = 1000; // Request large page, but loop anyway
+  const pageSize = 200; // API limits to 200 items per page
+  const CONCURRENCY_LIMIT = 5; // Fetch 5 pages at a time
 
   try {
-    // Add a unique timestamp 't' to force the browser to fetch fresh data every time (Cache Busting)
     const cacheBuster = `&t=${Date.now()}`;
-    while (hasMore) {
-      const response = await fetch(`${API_BASE_URL}?pagina=${page}&tamanioPagina=${pageSize}${cacheBuster}`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        }
-      });
 
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
+    // 1. Fetch First Page to get Total Count
+    const firstResponse = await fetch(`${API_BASE_URL}?pagina=1&tamanioPagina=${pageSize}${cacheBuster}`);
+    if (!firstResponse.ok) throw new Error(`API error: ${firstResponse.status}`);
+
+    const firstData = await firstResponse.json();
+    const totalItems = firstData.totalFilas || 0;
+    const initialResults = firstData.resultados || [];
+
+    allResults = [...initialResults];
+
+    if (totalItems === 0) return { resultados: [], total: 0 };
+
+    const totalPages = Math.ceil(totalItems / pageSize);
+    if (onProgress) onProgress(1, totalPages);
+
+    // 2. Prepare remaining pages
+    if (totalPages > 1) {
+      const remainingPages = [];
+      for (let i = 2; i <= totalPages; i++) {
+        remainingPages.push(i);
       }
 
-      const data = await response.json();
-      const results = data.resultados || [];
+      // 3. Process in Chunks (Simple Concurrency Control)
+      for (let i = 0; i < remainingPages.length; i += CONCURRENCY_LIMIT) {
+        const chunk = remainingPages.slice(i, i + CONCURRENCY_LIMIT);
 
-      if (results.length > 0) {
-        allResults = [...allResults, ...results];
-        // If we got fewer items than requested (or 0), we're probably done.
-        // However, CIMA API might behavior varies. Safe bet is if results < 25, we're at end?
-        // Or just keep going until 0.
-        if (results.length < pageSize && results.length < 25) {
-          // Optimization: If very few results, likely the last page.
-          // But strictly, we should just check if results.length === 0 on next page.
-          // Let's rely on empty array check for next loop if we got full page.
+        const chunkPromises = chunk.map(async (pageNum) => {
+          try {
+            const res = await fetch(`${API_BASE_URL}?pagina=${pageNum}&tamanioPagina=${pageSize}${cacheBuster}`);
+            if (!res.ok) {
+              console.warn(`Failed to fetch page ${pageNum}: ${res.status}`);
+              return [];
+            }
+            const data = await res.json();
+            return data.resultados || [];
+          } catch (err) {
+            console.error(`Error fetching page ${pageNum}`, err);
+            return [];
+          }
+        });
+
+        // Wait for this chunk to finish
+        const chunkResults = await Promise.all(chunkPromises);
+
+        // Flatten and add to results
+        chunkResults.forEach(results => {
+          allResults = [...allResults, ...results];
+        });
+
+        // Update Progress
+        if (onProgress) {
+          onProgress(1 + i + chunk.length, totalPages);
         }
-        page++;
-      } else {
-        hasMore = false;
       }
-
-      // Safety break to prevent infinite loops if API is weird
-      if (page > 50) hasMore = false;
     }
 
     return { resultados: allResults, total: allResults.length };
