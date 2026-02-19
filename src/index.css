@@ -9,6 +9,7 @@
   /* Teal 700 */
   --color-secondary: #64748b;
   /* Slate 500 */
+
   --color-accent: #ef4444;
   /* Red 500 */
   --color-warning: #f59e0b;
@@ -17,14 +18,14 @@
   /* Emerald 500 */
 
   --color-bg: #f1f5f9;
-  /* Slate 100 - Slightly darker to contrast with white cards */
+  /* Slate 100 */
   --color-text: #0f172a;
-  /* Slate 900 - Darker text */
+  /* Slate 900 */
   --color-text-muted: #475569;
   /* Slate 600 */
 
   --color-card-bg: #ffffff;
-  /* Solid White for maximum readability */
+  /* Solid White */
   --color-card-border: #e2e8f0;
   /* Slate 200 */
   --glass-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
@@ -208,6 +209,8 @@ body {
   transition: transform 0.2s, box-shadow 0.2s;
   border-left: 4px solid var(--color-primary);
   text-align: left;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 .shortage-card:hover {
@@ -691,6 +694,7 @@ body {
   resize: vertical;
   transition: all 0.2s;
   box-sizing: border-box;
+  /* Fix for overflow issues */
 }
 
 .note-input:focus {

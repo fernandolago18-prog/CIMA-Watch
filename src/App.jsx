@@ -70,7 +70,10 @@ function App() {
       });
 
       if (data && data.resultados) {
+        console.log('App: Data loaded', data.resultados.length);
         setShortages(data.resultados);
+      } else {
+        console.warn('App: No results in data', data);
       }
     } catch {
       setError('Error al cargar los datos de desabastecimiento. Por favor, inténtelo de nuevo más tarde.');
@@ -259,18 +262,17 @@ function App() {
           {/* Standalone match counter — shown when catalog is loaded */}
           {catalogCNs.size > 0 && (
             <div className="glass-panel" style={{
-              padding: '0.75rem 1rem',
+              padding: '1rem',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '0.5rem',
-              fontSize: '0.9rem',
+              gap: '0.75rem',
+              fontSize: '1rem',
               fontWeight: 600,
-              color: catalogMatchCount > 0 ? '#b91c1c' : '#0f766e',
-              background: catalogMatchCount > 0 ? '#fef2f2' : '#f0fdfa',
-              borderLeft: `4px solid ${catalogMatchCount > 0 ? '#ef4444' : '#0d9488'}`,
-              border: `1px solid ${catalogMatchCount > 0 ? '#fee2e2' : '#ccfbf1'}`,
-              borderLeftWidth: '4px'
+              color: catalogMatchCount > 0 ? 'var(--color-accent)' : 'var(--color-primary)',
+              marginBottom: '2rem',
+              borderLeft: `4px solid ${catalogMatchCount > 0 ? 'var(--color-accent)' : 'var(--color-primary)'}`,
+              transition: 'all 0.3s ease'
             }}>
               <span>
                 {catalogMatchCount > 0
@@ -318,30 +320,31 @@ function App() {
               </div>
             )}
 
-            {/* Smart Cleanup Button (visible only if data exists) */}
-            {(managedCNs.size > 0 || Object.keys(notes).length > 0) && (
-              <div className="glass-panel" style={{ padding: '0.5rem 1rem' }}>
-                <button
-                  onClick={handleCleanupData}
-                  style={{
-                    background: 'transparent',
-                    border: '1px solid #64748b',
-                    color: '#64748b',
-                    borderRadius: '4px',
-                    padding: '2px 8px',
-                    fontSize: '0.75rem',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem'
-                  }}
-                  title="Borrar solo datos de problemas ya resueltos"
-                >
-                  Limpiar Resueltos
-                </button>
-              </div>
-            )}
-          </div>
+            {
+              (managedCNs.size > 0 || Object.keys(notes).length > 0) && (
+                <div className="glass-panel" style={{ padding: '0.5rem 1rem' }}>
+                  <button
+                    onClick={handleCleanupData}
+                    style={{
+                      background: 'transparent',
+                      border: '1px solid #64748b',
+                      color: '#64748b',
+                      borderRadius: '4px',
+                      padding: '2px 8px',
+                      fontSize: '0.75rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem'
+                    }}
+                    title="Borrar solo datos de problemas ya resueltos"
+                  >
+                    Limpiar Resueltos
+                  </button>
+                </div>
+              )
+            }
+          </div >
 
           {error && (
             <div className="error-banner glass-panel">
@@ -358,9 +361,9 @@ function App() {
             notes={notes}
             onUpdateNote={updateNote}
           />
-        </main>
-      </div>
-    </ErrorBoundary>
+        </main >
+      </div >
+    </ErrorBoundary >
   );
 }
 
