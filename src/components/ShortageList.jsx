@@ -16,15 +16,11 @@ const ShortageList = ({ shortages, loading }) => {
     }
 
     return (
-        <>
-            <div className="shortage-grid">
-                {shortages.map((item) => (
-                    <ShortageCard key={item.cn} shortage={item} />
-                ))}
-            </div>
-
-
-        </>
+        <div className="shortage-grid">
+            {shortages.map((item) => (
+                <ShortageCard key={item.cn} shortage={item} />
+            ))}
+        </div>
     );
 };
 

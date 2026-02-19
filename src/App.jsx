@@ -30,8 +30,20 @@ function App() {
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(''); // New debounced state
   const [showCriticalOnly, setShowCriticalOnly] = useState(false);
   const [showCatalogOnly, setShowCatalogOnly] = useState(false);
+
+  // Debounce effect
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 200); // 200ms delay
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchQuery]);
 
   // Auto-enable filter if catalog was loaded from storage
   useEffect(() => {
@@ -119,8 +131,8 @@ function App() {
         return false;
       }
 
-      // Search logic
-      const trimmedQuery = searchQuery.trim();
+      // Search logic using DEBOUNCED query
+      const trimmedQuery = debouncedSearchQuery.trim();
       const lowerQuery = trimmedQuery.toLowerCase();
       const normalizedQuery = trimmedQuery.replace(/\D/g, '');
 
@@ -146,7 +158,7 @@ function App() {
 
       return true;
     });
-  }, [shortages, searchQuery, showCriticalOnly, catalogCNs, showCatalogOnly]);
+  }, [shortages, debouncedSearchQuery, showCriticalOnly, catalogCNs, showCatalogOnly]);
 
 
 

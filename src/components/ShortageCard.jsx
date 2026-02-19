@@ -2,8 +2,9 @@
 import React, { useState } from 'react';
 import { AlertTriangle, Calendar, Info, CheckCircle, XCircle } from 'lucide-react';
 import { isCriticalShortage } from '../utils/shortageUtils';
+import { formatDate } from '../utils/dateUtils';
 
-const ShortageCard = ({ shortage }) => {
+const ShortageCard = React.memo(({ shortage, style }) => {
     const [expanded, setExpanded] = useState(false);
 
     const isActive = shortage.activo;
@@ -14,8 +15,15 @@ const ShortageCard = ({ shortage }) => {
         ? `${shortage.observ.substring(0, 200)}...`
         : shortage.observ;
 
+    // Merge passed style (from virtualization) with defaults if needed
+    // However, for grid virtualization, the wrapper div usually handles positioning.
+    // If we pass style directly to the root div, it works best.
+
     return (
-        <div className={`shortage-card glass-panel ${isCritical ? 'critical-border' : ''} ${shortage.inCatalog ? 'catalog-match' : ''}`}>
+        <div
+            className={`shortage-card glass-panel ${isCritical ? 'critical-border' : ''} ${shortage.inCatalog ? 'catalog-match' : ''}`}
+            style={style}
+        >
             <div className="card-header">
                 <span className="cn-badge">Código Nacional: {shortage.cn}</span>
                 <div className="status-badges">
@@ -24,9 +32,7 @@ const ShortageCard = ({ shortage }) => {
                             En mi Hospital
                         </span>
                     )}
-                    {isActive ? (
-                        <span className="status-pill status-active"><Info size={12} /> Activo</span>
-                    ) : (
+                    {!isActive && (
                         <span className="status-pill status-resolved"><CheckCircle size={12} /> Resuelto</span>
                     )}
                     {isCritical && (
@@ -41,12 +47,12 @@ const ShortageCard = ({ shortage }) => {
                 <div className="date-row">
                     <span className="date-item" title="Fecha Inicio">
                         <Calendar size={14} className="icon-muted" />
-                        {new Date(shortage.fini).toLocaleDateString()}
+                        {formatDate(shortage.fini)}
                     </span>
                     <span className="arrow">→</span>
                     <span className="date-item" title="Fecha Fin Estimada">
                         {shortage.ffin && new Date(shortage.ffin).getFullYear() < 2050
-                            ? new Date(shortage.ffin).toLocaleDateString()
+                            ? formatDate(shortage.ffin)
                             : 'Sin fecha estimada'}
                     </span>
                 </div>
@@ -77,6 +83,6 @@ const ShortageCard = ({ shortage }) => {
             </div>
         </div>
     );
-};
+});
 
 export default ShortageCard;
