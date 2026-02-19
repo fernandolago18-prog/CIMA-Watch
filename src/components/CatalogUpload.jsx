@@ -4,16 +4,22 @@ import * as XLSX from 'xlsx';
 import { Upload, FileSpreadsheet, X, Check } from 'lucide-react';
 
 const CatalogUpload = ({ onCatalogLoaded }) => {
-    const [fileName, setFileName] = useState(null);
+    const [fileName, setFileName] = useState(() => localStorage.getItem('catalogFileName') || null);
     const [error, setError] = useState(null);
-    const [matches, setMatches] = useState(0);
-
+    const [matches, setMatches] = useState(() => {
+        const saved = localStorage.getItem('catalogCNs');
+        if (saved) {
+            try { return JSON.parse(saved).length; } catch { return 0; }
+        }
+        return 0;
+    });
 
     const handleFileUpload = (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
         setFileName(file.name);
+        localStorage.setItem('catalogFileName', file.name);
         setError(null);
 
         const reader = new FileReader();
@@ -26,12 +32,10 @@ const CatalogUpload = ({ onCatalogLoaded }) => {
                 const worksheet = workbook.Sheets[firstSheetName];
                 const data = XLSX.utils.sheet_to_json(worksheet);
 
-                // Extract CNs using fuzzy column matching
                 const cnList = new Set();
                 let targetColumn = null;
 
                 const headers = Object.keys(data[0] || {});
-                // Fuzzy search for column
                 targetColumn = headers.find(h => {
                     if (!h) return false;
                     const low = String(h).toLowerCase().trim();
@@ -46,11 +50,7 @@ const CatalogUpload = ({ onCatalogLoaded }) => {
                     data.forEach(row => {
                         const val = row[targetColumn];
                         if (val) {
-                            // Normalize: Keep ONLY digits. Remove dots, spaces, letters.
-                            // e.g. "123.456" -> "123456", "CN-123456" -> "123456"
                             const normalized = String(val).replace(/\D/g, '');
-
-                            // Basic sanity: CNs are usually 6 or 7 digits
                             if (normalized.length >= 6) {
                                 cnList.add(normalized);
                             }
@@ -71,7 +71,6 @@ const CatalogUpload = ({ onCatalogLoaded }) => {
                 }
 
                 setMatches(cnList.size);
-
                 onCatalogLoaded(cnList);
 
             } catch (err) {
@@ -87,8 +86,8 @@ const CatalogUpload = ({ onCatalogLoaded }) => {
         setFileName(null);
         setMatches(0);
         setError(null);
+        localStorage.removeItem('catalogFileName');
         onCatalogLoaded(new Set());
-        // Clear input
         document.getElementById('file-upload').value = '';
     };
 

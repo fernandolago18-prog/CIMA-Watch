@@ -98,6 +98,7 @@ function App() {
   const handleClearCatalog = () => {
     setCatalogCNs(new Set());
     localStorage.removeItem('catalogCNs');
+    localStorage.removeItem('catalogFileName');
     setShowCatalogOnly(false);
   };
 
@@ -238,6 +239,15 @@ function App() {
     });
   }, [shortages, debouncedSearchQuery, showCriticalOnly, catalogCNs, showCatalogOnly]);
 
+  // Match counter: computed directly on every render for instant sync
+  const catalogMatchCount = (catalogCNs.size > 0 && shortages.length > 0)
+    ? shortages.filter(item => {
+      const rawCN = item.cn || item.nregistro;
+      const apiCN = rawCN ? String(rawCN).replace(/\D/g, '') : '';
+      return catalogCNs.has(apiCN);
+    }).length
+    : 0;
+
   return (
     <ErrorBoundary>
       <div className="container">
@@ -245,6 +255,31 @@ function App() {
 
         <main className="main-content">
           <CatalogUpload onCatalogLoaded={handleCatalogLoaded} />
+
+          {/* Standalone match counter — shown when catalog is loaded */}
+          {catalogCNs.size > 0 && (
+            <div className="glass-panel" style={{
+              padding: '0.75rem 1rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
+              fontSize: '0.9rem',
+              fontWeight: 600,
+              color: catalogMatchCount > 0 ? '#b91c1c' : '#0f766e',
+              background: catalogMatchCount > 0 ? '#fef2f2' : '#f0fdfa',
+              borderLeft: `4px solid ${catalogMatchCount > 0 ? '#ef4444' : '#0d9488'}`,
+              border: `1px solid ${catalogMatchCount > 0 ? '#fee2e2' : '#ccfbf1'}`,
+              borderLeftWidth: '4px'
+            }}>
+              <span>
+                {catalogMatchCount > 0
+                  ? `${catalogMatchCount} de tus ${catalogCNs.size} medicamentos están en desabastecimiento`
+                  : `Ninguno de tus ${catalogCNs.size} medicamentos está en desabastecimiento`
+                }
+              </span>
+            </div>
+          )}
 
           <div className="controls-row">
             <Filters
@@ -255,7 +290,7 @@ function App() {
             />
 
             {catalogCNs.size > 0 && (
-              <div className="glass-panel" style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <div className="glass-panel" style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
                 <label className={`toggle-btn ${showCatalogOnly ? 'active' : ''}`} style={{ border: 'none', background: 'transparent', padding: 0 }}>
                   <input
                     type="checkbox"
@@ -263,7 +298,7 @@ function App() {
                     onChange={(e) => setShowCatalogOnly(e.target.checked)}
                     style={{ marginRight: '0.5rem' }}
                   />
-                  <span>Ver solo mis medicamentos afectados ({catalogCNs.size})</span>
+                  <span>Ver solo mis medicamentos afectados</span>
                 </label>
                 <button
                   onClick={handleClearCatalog}
